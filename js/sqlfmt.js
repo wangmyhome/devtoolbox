@@ -433,9 +433,13 @@
     }
 
     // 判断 CREATE TABLE t ( ... ) 里的括号（列定义块）
+    // 允许库名.表名的点号；跳过注释；也允许 AS SELECT 之类不误判
     function isTableColumns(idx) {
-      for (var k = idx - 1, seen = 0; k >= 0 && seen < 4; k--, seen++) {
+      for (var k = idx - 1, seen = 0; k >= 0 && seen < 8; k--) {
         var tk = tokens[k];
+        if (tk.t === 'comment') continue;                 // 注释不算
+        if (tk.t === 'punct' && tk.v === '.') continue;   // 库名.表名 的点不算
+        seen++;
         if (tk.t !== 'word') return false;
         if (/(^|\s)TABLE$/.test(tk.v.toUpperCase())) return true;
       }

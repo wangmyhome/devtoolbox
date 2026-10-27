@@ -50,6 +50,8 @@
   --del-bg: rgba(198,40,40,.12);
   --del-fg: #b71c1c;
   --hl: rgba(46,125,50,.16);
+  --mod-bg: rgba(234,179,8,.18);
+  --mod-fg: #8a6d07;
 }
 
 /* ------------------------------------------------ 暖米黄主题 */
@@ -99,6 +101,8 @@
   --del-bg: rgba(198,40,40,.12);
   --del-fg: #b71c1c;
   --hl: rgba(180,83,9,.15);
+  --mod-bg: rgba(234,179,8,.20);
+  --mod-fg: #8a6d07;
 }
 
 :root[data-theme="dark"] {
@@ -147,6 +151,8 @@
   --del-bg: rgba(239,68,68,.12);
   --del-fg: #f87171;
   --hl: rgba(99,102,241,.20);
+  --mod-bg: rgba(250,204,21,.15);
+  --mod-fg: #eab308;
 }
 
 :root[data-theme="light"] {
@@ -195,6 +201,8 @@
   --del-bg: #ffebe9;
   --del-fg: #c02627;
   --hl: rgba(91,91,214,.14);
+  --mod-bg: #fef9c3;
+  --mod-fg: #a16207;
 }
 
 * { box-sizing: border-box; }

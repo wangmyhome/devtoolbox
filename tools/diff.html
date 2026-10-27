@@ -28,10 +28,20 @@
   /* 左右两个半区，各自带行号列 */
   .side {
     display: grid;
-    grid-template-columns: 3.2em 1fr;
+    grid-template-columns: 1.2em 3.2em 1fr;
     min-width: 0;
   }
   .side.right { border-left: 1px solid var(--border-soft); }
+
+  /* 行首符号：+ 新增 / − 删除 / M 修改 */
+  .sign {
+    text-align: center;
+    color: var(--muted);
+    opacity: .5;
+    user-select: none;
+    -webkit-user-select: none;
+    font-weight: 700;
+  }
 
   .num {
     text-align: right;
@@ -50,14 +60,22 @@
     min-width: 0;
   }
 
-  /* 状态着色：修改=黄，新增=绿，删除=红，不变=透明 */
-  .sbs-row.mod  .num, .sbs-row.mod  .txt { background: rgba(250, 204, 21, .16); }
-  .sbs-row.mod  .num { color: #eab308; opacity: 1; }
-  :root[data-theme="light"] .sbs-row.mod .num, :root[data-theme="light"] .sbs-row.mod .txt {
-    background: #fef9c3;
+  /* 状态着色：修改 M=淡黄，新增 +=绿，删除 −=粉红，全部跟随主题 */
+  .sbs-row.add  .num, .sbs-row.add  .txt, .sbs-row.add  .sign {
+    background: var(--add-bg);
+    color: var(--add-fg);
   }
-  .sbs-row.add  .num, .sbs-row.add  .txt { background: var(--add-bg); }
-  .sbs-row.del  .num, .sbs-row.del  .txt { background: var(--del-bg); }
+  .sbs-row.add .sign, .sbs-row.add .num { opacity: 1; }
+  .sbs-row.del  .num, .sbs-row.del  .txt, .sbs-row.del  .sign {
+    background: var(--del-bg);
+    color: var(--del-fg);
+  }
+  .sbs-row.del .sign, .sbs-row.del .num { opacity: 1; }
+  .sbs-row.mod  .num, .sbs-row.mod  .txt, .sbs-row.mod  .sign {
+    background: var(--mod-bg);
+    color: var(--mod-fg);
+  }
+  .sbs-row.mod .sign, .sbs-row.mod .num { opacity: 1; }
 
   .sbs-row:hover .txt { filter: brightness(1.06); }
 
@@ -162,7 +180,7 @@
     <div class="pane-head">
       <span class="pane-title">对比结果（左右同步滚动）</span>
       <div class="pane-tools">
-        <span class="hint">修改黄 · 新增绿 · 删除红</span>
+        <span class="hint">修改 M 黄 · 新增 + 绿 · 删除 − 粉</span>
         <span class="diff-stat" id="stat"></span>
       </div>
     </div>
@@ -261,17 +279,20 @@
   }
 
   /* ------------------------------------------------ 渲染 */
-  function sideHtml(cls, ln, text, empty) {
+  function sideHtml(cls, ln, text, empty, sign) {
     return '<div class="side ' + cls + '">'
+      + '<div class="sign">' + sign + '</div>'
       + '<div class="num">' + (ln == null ? '' : ln) + '</div>'
       + '<div class="txt' + (empty ? ' empty-cell' : '') + '">' + esc(text) + '</div>'
       + '</div>';
   }
 
   function rowHtml(row) {
+    var lSign = row.type === 'mod' ? 'M' : row.type === 'del' ? '−' : '';
+    var rSign = row.type === 'mod' ? 'M' : row.type === 'add' ? '+' : '';
     return '<div class="sbs-row ' + row.type + '">'
-      + sideHtml('left', row.lnL, row.l, row.l == null)
-      + sideHtml('right', row.lnR, row.r, row.r == null)
+      + sideHtml('left', row.lnL, row.l, row.l == null, lSign)
+      + sideHtml('right', row.lnR, row.r, row.r == null, rSign)
       + '</div>';
   }
 
@@ -399,9 +420,9 @@
   document.getElementById('copyBtn').addEventListener('click', function () {
     var lines = [];
     document.querySelectorAll('#out .sbs-row').forEach(function (r) {
-      var l = r.children[0].querySelector('.txt').textContent;
-      var rr = r.children[1].querySelector('.txt').textContent;
-      var type = r.classList.contains('mod') ? '~'
+      var l = r.querySelector('.side.left .txt').textContent;
+      var rr = r.querySelector('.side.right .txt').textContent;
+      var type = r.classList.contains('mod') ? 'M'
         : r.classList.contains('add') ? '+' : r.classList.contains('del') ? '-' : ' ';
       lines.push(type + ' ' + (l || rr));
     });
