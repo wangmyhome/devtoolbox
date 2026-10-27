@@ -9,77 +9,129 @@
 <script src="../js/app.js?v=202610271643"></script>
 <script src="../js/vendor/diff.min.js?v=202610271643"></script>
 <style>
-  /* ---------- IDEA 风格左右对比 ---------- */
+  /* 输入区至少保留 3 行高度；结果区占剩余空间 */
+  /* 视图模式：都显示(默认一人一半) / 只看输入 / 只看结果 */
+  .panes { flex: 0 0 auto; height: 45vh; min-height: calc(3 * 1.7em + 28px); }
   .result-pane { flex: 1 1 auto; min-height: 300px; }
+  .view-input .result-pane { display: none; }
+  .view-input .panes { flex: 1 1 auto; height: auto; }
+  .view-result .panes { display: none; }
+  .view-result .result-pane { flex: 1 1 auto; }
 
+  /* ---------- 输入区：IDEA 式对齐编辑器（高亮层 + 透明 textarea） ---------- */
+  .editor-wrap { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; background: var(--input-bg); }
+  .hl-pre {
+    position: absolute; inset: 0;
+    margin: 0; overflow: hidden;
+    padding: 10px 0;
+    font-size: 13px;
+    line-height: 1.7;
+    z-index: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .oline { display: flex; }
+  .sign {
+    flex: 0 0 1.4em;
+    text-align: center;
+    font-weight: 700;
+    color: transparent;
+  }
+  .ln {
+    flex: 0 0 3.2em;
+    padding-right: 8px;
+    text-align: right;
+    color: var(--muted);
+    opacity: .55;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .otext {
+    flex: 1 1 auto;
+    white-space: pre;
+    min-width: 0;
+    color: var(--fg);
+  }
+  .editor-wrap textarea {
+    position: absolute; inset: 0;
+    z-index: 2;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--accent);
+    overflow: auto;
+    min-height: 0;
+    white-space: pre;
+    padding: 10px 0 10px calc(1.4em + 3.2em + 8px);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .editor-wrap textarea::selection { background: var(--sel); color: transparent; }
+  .editor-wrap textarea::placeholder { color: var(--muted); opacity: .8; }
+  .editor-wrap textarea:focus { box-shadow: none; }
+
+  /* 行级差异着色：+ 绿 / − 粉红 / M 淡黄，随主题 */
+  .oline.add .otext, .oline.add .ln { background: var(--add-bg); }
+  .oline.add .sign { color: var(--add-fg); }
+  .oline.del .otext, .oline.del .ln { background: var(--del-bg); }
+  .oline.del .sign { color: var(--del-fg); }
+  .oline.mod .otext, .oline.mod .ln { background: var(--mod-bg); }
+  .oline.mod .sign { color: var(--mod-fg); }
+  .oline.add .sign, .oline.add .ln,
+  .oline.del .sign, .oline.del .ln,
+  .oline.mod .sign, .oline.mod .ln { opacity: 1; }
+  /* ---------- 结果区：左右对齐网格（与输入区同一套符号/行号样式） ---------- */
+  .result-pane { flex: 1 1 auto; min-height: 300px; }
   .sbs {
     display: grid;
     grid-template-columns: 1fr 1fr;
     width: 100%;
-    font-size: 12.5px;
-    line-height: 1.65;
-    padding: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 10px 0;
+    font-variant-numeric: tabular-nums;
   }
   .sbs-row {
     display: grid;
     grid-template-columns: subgrid;
     grid-column: 1 / -1;
   }
-  /* 左右两个半区，各自带行号列 */
+  .sbs-row:hover .txt { filter: brightness(1.06); }
   .side {
     display: grid;
-    grid-template-columns: 1.2em 3.2em 1fr;
+    grid-template-columns: 1.4em 3.2em 1fr;
     min-width: 0;
   }
   .side.right { border-left: 1px solid var(--border-soft); }
-
-  /* 行首符号：+ 新增 / − 删除 / M 修改 */
-  .sign {
+  .sbs .sign {
     text-align: center;
-    color: var(--muted);
-    opacity: .5;
+    color: transparent;
+    font-weight: 700;
     user-select: none;
     -webkit-user-select: none;
-    font-weight: 700;
   }
-
-  .num {
+  .sbs .num {
+    padding-right: 8px;
     text-align: right;
-    padding: 0 8px 0 6px;
     color: var(--muted);
     opacity: .6;
     user-select: none;
     -webkit-user-select: none;
-    font-variant-numeric: tabular-nums;
-    background: var(--panel-head);
+    background: transparent;
   }
-  .txt {
+  .sbs .txt {
     padding: 0 10px;
     white-space: pre-wrap;
     word-break: break-word;
     min-width: 0;
+    color: var(--fg);
   }
-
-  /* 状态着色：修改 M=淡黄，新增 +=绿，删除 −=粉红，全部跟随主题 */
-  .sbs-row.add  .num, .sbs-row.add  .txt, .sbs-row.add  .sign {
-    background: var(--add-bg);
-    color: var(--add-fg);
-  }
+  .sbs-row.add .num, .sbs-row.add .txt, .sbs-row.add .sign { background: var(--add-bg); color: var(--add-fg); }
   .sbs-row.add .sign, .sbs-row.add .num { opacity: 1; }
-  .sbs-row.del  .num, .sbs-row.del  .txt, .sbs-row.del  .sign {
-    background: var(--del-bg);
-    color: var(--del-fg);
-  }
+  .sbs-row.del .num, .sbs-row.del .txt, .sbs-row.del .sign { background: var(--del-bg); color: var(--del-fg); }
   .sbs-row.del .sign, .sbs-row.del .num { opacity: 1; }
-  .sbs-row.mod  .num, .sbs-row.mod  .txt, .sbs-row.mod  .sign {
-    background: var(--mod-bg);
-    color: var(--mod-fg);
-  }
+  .sbs-row.mod .num, .sbs-row.mod .txt, .sbs-row.mod .sign { background: var(--mod-bg); color: var(--mod-fg); }
   .sbs-row.mod .sign, .sbs-row.mod .num { opacity: 1; }
+  .sbs .txt.empty-cell { background: rgba(127,127,127,.04); }
 
-  .sbs-row:hover .txt { filter: brightness(1.06); }
-
-  /* 折叠提示行：横跨左右两栏 */
   .skip-row {
     display: grid;
     grid-template-columns: subgrid;
@@ -95,8 +147,9 @@
   }
   .skip-row > div:last-child { border-left: 1px solid var(--border-soft); }
 
-  /* 空占位（单侧有内容另一侧为空时） */
-  .txt.empty-cell { background: rgba(127,127,127,.04); }
+  .diff-stat { display: flex; gap: 10px; font-size: 12px; }
+  .diff-stat .plus { color: var(--add-fg); }
+  .diff-stat .minus { color: var(--del-fg); }
 </style>
 </head>
 <body>
@@ -135,6 +188,14 @@
   <div class="toolbar">
     <div class="opts">
       <div class="opt">
+        <span class="opt-label">显示</span>
+        <div class="seg prominent" id="segView" role="group" aria-label="视图模式">
+          <button data-value="both">都显示</button>
+          <button data-value="input">只看输入</button>
+          <button data-value="result">只看结果</button>
+        </div>
+      </div>
+      <div class="opt">
         <span class="opt-label">空白</span>
         <div class="seg" id="segWs" role="group" aria-label="空白处理">
           <button data-value="strict">严格比较</button>
@@ -165,14 +226,20 @@
         <span class="pane-title">文本 A · 原文本</span>
         <div class="pane-tools"><span class="stats" id="statsA"></span></div>
       </div>
-      <textarea id="a" spellcheck="false" placeholder="粘贴原始版本…"></textarea>
+      <div class="editor-wrap">
+        <pre id="hlA" class="hl-pre" aria-hidden="true"></pre>
+        <textarea id="a" wrap="off" spellcheck="false" placeholder="粘贴原始版本…"></textarea>
+      </div>
     </section>
     <section class="pane">
       <div class="pane-head">
         <span class="pane-title">文本 B · 新文本</span>
         <div class="pane-tools"><span class="stats" id="statsB"></span></div>
       </div>
-      <textarea id="b" spellcheck="false" placeholder="粘贴修改后的版本…"></textarea>
+      <div class="editor-wrap">
+        <pre id="hlB" class="hl-pre" aria-hidden="true"></pre>
+        <textarea id="b" wrap="off" spellcheck="false" placeholder="粘贴修改后的版本…"></textarea>
+      </div>
     </section>
   </main>
 
@@ -203,6 +270,7 @@
     statsA: document.getElementById('statsA'),
     statsB: document.getElementById('statsB'),
     segWs: document.getElementById('segWs'),
+    segView: document.getElementById('segView'),
     segCtx: document.getElementById('segCtx')
   };
 
@@ -224,58 +292,193 @@
 
   /* ------------------------------------------------ 构建对齐行
      row: { type: same|mod|add|del, l, r, lnL, lnR } */
+  /* 内容相似度：字符二元组 Dice 系数，0～1；≥0.6 才算「修改」配对 */
+  function bigrams(s) {
+    var set = {};
+    var n = 0;
+    for (var i = 0; i < s.length - 1; i++) {
+      var b = s.slice(i, i + 2);
+      set[b] = (set[b] || 0) + 1;
+      n++;
+    }
+    return { set: set, n: n };
+  }
+
+  function similar(a, b) {
+    if (a === b) return 1;
+    if (!a || !b) return 0;
+    var A = bigrams(a), B = bigrams(b);
+    if (!A.n || !B.n) return 0;
+    var common = 0;
+    for (var k in A.set) common += Math.min(A.set[k], B.set[k] || 0);
+    return (2 * common) / (A.n + B.n);
+  }
+
+  var SIM_THRESHOLD = 0.6;
+
+  // 把一组删除行与一组新增行配对：相似度≥阈值才算「修改」
+  function pairDelAdd(dels, adds) {
+    var mods = [];
+    var usedAdd = new Array(adds.length).fill(false);
+    var delUsed = new Array(dels.length).fill(false);
+    for (var i = 0; i < dels.length; i++) {
+      var best = -1, bestSim = SIM_THRESHOLD;
+      for (var j = 0; j < adds.length; j++) {
+        if (usedAdd[j]) continue;
+        var s = similar(dels[i], adds[j]);
+        if (s >= bestSim) { bestSim = s; best = j; }
+      }
+      if (best >= 0) { usedAdd[best] = true; delUsed[i] = true; mods.push([dels[i], adds[best]]); }
+    }
+    var leftDels = [], addLeft = [];
+    for (var d = 0; d < dels.length; d++) if (!delUsed[d]) leftDels.push(dels[d]);
+    for (var a2 = 0; a2 < adds.length; a2++) if (!usedAdd[a2]) addLeft.push(adds[a2]);
+    return { mods: mods, dels: leftDels, adds: addLeft };
+  }
+
   function buildRows(parts) {
     var rows = [];
     var lnL = 0, lnR = 0;
-    var pendingDel = null;   // 待与新增配对的删除块
+    var pendDel = null;   // 待与新增配对的删除行
+    var pendAdd = null;   // 先出现的新增行（可能与后面的删除配对）
 
-    function flushDel() {
-      if (!pendingDel) return;
-      pendingDel.forEach(function (line) {
-        lnL++;
-        rows.push({ type: 'del', l: line, r: null, lnL: lnL, lnR: null });
-      });
-      pendingDel = null;
+    function emitDel(line) { lnL++; rows.push({ type: 'del', l: line, r: null, lnL: lnL, lnR: null }); }
+    function emitAdd(line) { lnR++; rows.push({ type: 'add', l: null, r: line, lnL: null, lnR: lnR }); }
+    function emitPair(pair) {
+      lnL++; lnR++;
+      rows.push({ type: 'mod', l: pair[0], r: pair[1], lnL: lnL, lnR: lnR });
+    }
+    function flush() {
+      if (pendDel) { pendDel.forEach(emitDel); pendDel = null; }
+      if (pendAdd) { pendAdd.forEach(emitAdd); pendAdd = null; }
     }
 
     parts.forEach(function (part) {
       if (part.added) {
         var adds = splitLines(part.value);
-        if (pendingDel) {
-          // 删除块紧跟新增块 → 逐行配对为「修改」
-          var n = Math.min(pendingDel.length, adds.length);
-          for (var i = 0; i < n; i++) {
-            lnL++; lnR++;
-            rows.push({ type: 'mod', l: pendingDel[i], r: adds[i], lnL: lnL, lnR: lnR });
-          }
-          for (var j = n; j < pendingDel.length; j++) {
-            lnL++;
-            rows.push({ type: 'del', l: pendingDel[j], r: null, lnL: lnL, lnR: null });
-          }
-          for (var k = n; k < adds.length; k++) {
-            lnR++;
-            rows.push({ type: 'add', l: null, r: adds[k], lnL: null, lnR: lnR });
-          }
-          pendingDel = null;
+        if (pendDel) {
+          var p = pairDelAdd(pendDel, adds);
+          p.mods.forEach(emitPair);
+          p.dels.forEach(emitDel);
+          pendAdd = p.adds.length ? p.adds : null;
+          pendDel = null;
         } else {
-          adds.forEach(function (line) {
-            lnR++;
-            rows.push({ type: 'add', l: null, r: line, lnL: null, lnR: lnR });
-          });
+          pendAdd = (pendAdd || []).concat(adds);
         }
       } else if (part.removed) {
-        flushDel();
-        pendingDel = splitLines(part.value);
+        if (pendAdd) {
+          var p2 = pairDelAdd(splitLines(part.value), pendAdd);
+          p2.mods.forEach(emitPair);
+          p2.dels.forEach(emitDel);
+          pendAdd = p2.adds.length ? p2.adds : null;
+        } else {
+          pendDel = (pendDel || []).concat(splitLines(part.value));
+        }
       } else {
-        flushDel();
+        flush();
         splitLines(part.value).forEach(function (line) {
           lnL++; lnR++;
           rows.push({ type: 'same', l: line, r: line, lnL: lnL, lnR: lnR });
         });
       }
     });
-    flushDel();
+    flush();
     return rows;
+  }
+
+  /* ------------------------------------------------ 输入区对齐视图 */
+  var el2 = {
+    hlA: document.getElementById('hlA'),
+    hlB: document.getElementById('hlB')
+  };
+  var lastTypeL = {};   // 行号 -> 差异类型（上次对比结果）
+  var lastTypeR = {};
+  var anchors = [[0, 0], [1, 1]];  // [A行号, B行号] 对齐锚点
+
+  function esc(s) { return TB.escapeHtml(s); }
+
+  function renderSideOverlay(pre, lines, typeMap, signOf) {
+    var html = [];
+    for (var i = 0; i < lines.length; i++) {
+      var ln = i + 1;
+      var type = typeMap[ln] || 'same';
+      var sign = signOf(type);
+      html.push('<div class="oline ' + type + '">'
+        + '<span class="sign">' + sign + '</span>'
+        + '<span class="ln">' + ln + '</span>'
+        + '<span class="otext">' + esc(lines[i]) + '</span></div>');
+    }
+    pre.innerHTML = html.join('');
+  }
+
+  function renderInputOverlay(rows) {
+    lastTypeL = {}; lastTypeR = {};
+    var maxL = 0, maxR = 0;
+    anchors = [[0, 0]];
+    rows.forEach(function (r) {
+      if (r.lnL != null) { lastTypeL[r.lnL] = r.type; maxL = Math.max(maxL, r.lnL); }
+      if (r.lnR != null) { lastTypeR[r.lnR] = r.type; maxR = Math.max(maxR, r.lnR); }
+      if (r.lnL != null && r.lnR != null) anchors.push([r.lnL, r.lnR]);
+    });
+    anchors.push([maxL + 1, maxR + 1]);
+
+    var linesA = el.a.value.split('\n');
+    var linesB = el.b.value.split('\n');
+    renderSideOverlay(el2.hlA, linesA, lastTypeL, function (t) {
+      return t === 'mod' ? 'M' : t === 'del' ? '−' : '';
+    });
+    renderSideOverlay(el2.hlB, linesB, lastTypeR, function (t) {
+      return t === 'mod' ? 'M' : t === 'add' ? '+' : '';
+    });
+  }
+
+  // 编辑时立即用旧映射重渲染（文字不消失），颜色等重新对比后更新
+  function quickRender() {
+    renderSideOverlay(el2.hlA, el.a.value.split('\n'), lastTypeL, function (t) {
+      return t === 'mod' ? 'M' : t === 'del' ? '−' : '';
+    });
+    renderSideOverlay(el2.hlB, el.b.value.split('\n'), lastTypeR, function (t) {
+      return t === 'mod' ? 'M' : t === 'add' ? '+' : '';
+    });
+  }
+
+  // A 行号 → B 行号（锚点线性插值）
+  function mapLine(x, fromB) {
+    var pts = anchors;
+    if (fromB) pts = anchors.map(function (p) { return [p[1], p[0]]; });
+    if (x <= pts[0][0]) return pts[0][1];
+    for (var i = 1; i < pts.length; i++) {
+      if (x <= pts[i][0]) {
+        var a1 = pts[i - 1], a2 = pts[i];
+        if (a2[0] === a1[0]) return a2[1];
+        return a1[1] + (x - a1[0]) * (a2[1] - a1[1]) / (a2[0] - a1[0]);
+      }
+    }
+    var last = pts[pts.length - 1];
+    return last[1] + (x - last[0]);
+  }
+
+  function lineH() {
+    var lh = parseFloat(getComputedStyle(el.a).lineHeight);
+    return isNaN(lh) ? 22.1 : lh;
+  }
+
+  var syncLock = false;
+  function syncScroll(src, dst, fromB) {
+    if (syncLock) return;
+    syncLock = true;
+    var lh = lineH();
+    var topLine = src.scrollTop / lh + 1;
+    var target = mapLine(topLine, fromB);
+    dst.scrollTop = (target - 1) * lh;
+    // 可见高亮层跟随各自的 textarea
+    var srcHl = fromB ? el2.hlB : el2.hlA;
+    var dstHl = fromB ? el2.hlA : el2.hlB;
+    srcHl.scrollTop = src.scrollTop;
+    srcHl.scrollLeft = src.scrollLeft;
+    dstHl.scrollTop = dst.scrollTop;
+    dstHl.scrollLeft = dst.scrollLeft;
+    syncLock = false;
   }
 
   /* ------------------------------------------------ 渲染 */
@@ -283,7 +486,7 @@
     return '<div class="side ' + cls + '">'
       + '<div class="sign">' + sign + '</div>'
       + '<div class="num">' + (ln == null ? '' : ln) + '</div>'
-      + '<div class="txt' + (empty ? ' empty-cell' : '') + '">' + esc(text) + '</div>'
+      + '<div class="txt' + (empty ? ' empty-cell' : '') + '">' + (text == null ? '' : esc(text)) + '</div>'
       + '</div>';
   }
 
@@ -353,11 +556,24 @@
       + (adds ? ' <span class="plus">+' + adds + '</span>' : '')
       + (dels ? ' <span class="minus">-' + dels + '</span>' : '');
 
+    renderInputOverlay(rows);
+
     document.title = '文本对比 (' + mods + '改 +' + adds + ' -' + dels + ') · DevToolbox';
     TB.toast(mods || adds || dels
       ? '已对比：' + mods + ' 处修改，+' + adds + '，-' + dels
       : '两段文本完全相同');
   }
+
+  /* ------------------------------------------------ 视图模式 */
+  var view = 'both';
+  function applyView(v) {
+    view = v;
+    var body = document.body;
+    body.classList.toggle('view-both', v === 'both');
+    body.classList.toggle('view-input', v === 'input');
+    body.classList.toggle('view-result', v === 'result');
+  }
+  TB.bindSeg(el.segView, 'both', applyView);
 
   /* ------------------------------------------------ 控件 */
   TB.bindSeg(el.segWs, opts.ignore ? 'ignore' : 'strict', function (v) {
@@ -436,32 +652,16 @@
 
   /* ------------------------------------------------ 输入后自动对比 */
   var runSoon = TB.debounce(run, 300);
-  el.a.addEventListener('input', function () { updateCounts(); runSoon(); });
-  el.b.addEventListener('input', function () { updateCounts(); runSoon(); });
+  el.a.addEventListener('input', function () { updateCounts(); quickRender(); runSoon(); });
+  el.b.addEventListener('input', function () { updateCounts(); quickRender(); runSoon(); });
   el.a.addEventListener('paste', function () { setTimeout(function () { updateCounts(); run(); }, 0); });
   el.b.addEventListener('paste', function () { setTimeout(function () { updateCounts(); run(); }, 0); });
 
-  /* ------------------------------------------------ 输入区同步滚动
-     按滚动比例同步，另一侧拖动时本侧不回写，避免死循环 */
-  var syncing = false;
-
-  function syncScroll(src, dst) {
-    if (syncing) return;
-    syncing = true;
-    var srcMax = src.scrollHeight - src.clientHeight;
-    var dstMax = dst.scrollHeight - dst.clientHeight;
-    if (srcMax > 0 && dstMax > 0) {
-      dst.scrollTop = (src.scrollTop / srcMax) * dstMax;
-    } else {
-      dst.scrollTop = src.scrollTop;
-    }
-    syncing = false;
-  }
-
-  el.a.addEventListener('scroll', function () { syncScroll(el.a, el.b); });
-  el.b.addEventListener('scroll', function () { syncScroll(el.b, el.a); });
+  el.a.addEventListener('scroll', function () { syncScroll(el.a, el.b, false); });
+  el.b.addEventListener('scroll', function () { syncScroll(el.b, el.a, true); });
 
   updateCounts();
+  renderInputOverlay([{ type: 'same', lnL: 1, lnR: 1 }]);
 })();
 </script>
 </body>
