@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON 格式化 · DevToolbox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M13 10l-4 6 4 6M19 10l4 6-4 6' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../css/app.css">
+<script src="../js/app.js"></script>
+<style>
+  /* ------------------------------------------------ json.cn 风格的 JSON 树 */
+  :root {
+    --jk: #92278f;        /* 键名：紫红 */
+    --jstr: #009900;      /* 字符串：绿 */
+    --jnum: #0a00d8;      /* 数字：蓝 */
+    --jbool: #d25b0e;     /* 布尔 */
+    --jnull: #d25b0e;     /* null */
+    --jpunct: #444;       /* 括号/冒号/逗号 */
+    --jtoggle: #e8483f;   /* 折叠方块：红 */
+    --jdots: #999;
+  }
+  :root[data-theme="dark"] {
+    --jk: #c678dd;
+    --jstr: #98c379;
+    --jnum: #61afef;
+    --jbool: #d19a66;
+    --jnull: #d19a66;
+    --jpunct: #9aa5b4;
+    --jtoggle: #e8483f;
+    --jdots: #6d7889;
+  }
+
+  .out.jout {
+    counter-reset: jline;
+    padding: 10px 0;
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .jline {
+    display: flex;
+    counter-increment: jline;
+    padding-right: 16px;
+  }
+  .jline:hover { background: rgba(127,127,127,.05); }
+
+  .jln {
+    flex: 0 0 auto;
+    width: 2.8em;
+    padding-right: 10px;
+    text-align: right;
+    color: var(--muted);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .jln::before { content: counter(jline); }
+
+  .jcode { white-space: pre; flex: 1 1 auto; min-width: 0; }
+
+  /* 折叠开关：红色小方块 −/+ */
+  .jt {
+    display: inline-grid;
+    place-items: center;
+    width: 13px; height: 13px;
+    margin-right: 6px;
+    border-radius: 3px;
+    background: var(--jtoggle);
+    color: #fff;
+    font: 700 11px/1 ui-monospace, Menlo, monospace;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    vertical-align: -1px;
+    transition: transform .1s ease;
+  }
+  .jt:hover { transform: scale(1.15); }
+  .jt.leaf { visibility: hidden; }
+
+  /* 可点击的开括号 */
+  .jclick { cursor: pointer; }
+  .jclick:hover { color: var(--jtoggle); text-shadow: 0 0 8px rgba(232,72,63,.5); }
+
+  /* 折叠时高亮开括号，提示当前收起范围 */
+  .jnode.collapsed > .jline .jclick { color: var(--jtoggle); }
+
+  .jk     { color: var(--jk); font-weight: 600; }
+  .jstr   { color: var(--jstr); }
+  .jnum   { color: var(--jnum); }
+  .jbool  { color: var(--jbool); }
+  .jnull  { color: var(--jnull); }
+  .jp     { color: var(--jpunct); }
+
+  .jchildren { display: block; }
+  .jnode.collapsed > .jchildren { display: none; }
+  .jnode.collapsed > .jline .jt::before { content: "+"; }
+  .jnode:not(.collapsed) > .jline .jt::before { content: "−"; }
+  .jdots { display: none; color: var(--jdots); }
+  .jnode.collapsed > .jdots { display: block; }
+
+  /* 折叠后的摘要：{ … 3 items } */
+  .jsummary { color: var(--jdots); font-style: italic; }
+
+  .jclick { cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <a class="brand-link" href="../index.html" title="返回首页">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 8l4 4-4 4M11 8l-4 4 4 4"/>
+          </svg>
+        </div>
+        <div>
+          <h1>JSON 格式化</h1>
+          <p class="sub">json.cn 同款配色；点击红色方块折叠 / 展开</p>
+        </div>
+      </a>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="themeBtn" title="切换浅色 / 深色" aria-label="切换主题">
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="opts">
+      <div class="opt">
+        <span class="opt-label">缩进</span>
+        <div class="seg" id="segIndent" role="group" aria-label="缩进宽度">
+          <button data-value="2">2 空格</button>
+          <button data-value="4">4 空格</button>
+          <button data-value="tab">Tab</button>
+        </div>
+      </div>
+      <div class="opt">
+        <span class="opt-label">键名</span>
+        <div class="seg" id="segSort" role="group" aria-label="键名排序">
+          <button data-value="keep">保持原序</button>
+          <button data-value="asc">字母升序</button>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="sampleBtn">示例</button>
+      <button class="btn" id="clearBtn">清空</button>
+      <button class="btn" id="expandBtn">全部展开</button>
+      <button class="btn" id="collapseBtn">全部折叠</button>
+      <button class="btn" id="compressBtn">压缩</button>
+      <button class="btn primary" id="formatBtn">格式化 <kbd data-kbd>⌘⏎</kbd></button>
+    </div>
+  </div>
+
+  <main class="panes">
+    <section class="pane">
+      <div class="pane-head">
+        <span class="pane-title">输入</span>
+        <span class="hint">粘贴或拖入 .json 文件</span>
+      </div>
+      <textarea id="input" spellcheck="false" autocapitalize="off" autocomplete="off"
+        placeholder='{"name":"张三","age":18,"tags":["dev","mac"]}'></textarea>
+      <div class="warn" id="warn"></div>
+    </section>
+
+    <section class="pane">
+      <div class="pane-head">
+        <span class="pane-title" id="outTitle">格式化结果</span>
+        <div class="pane-tools">
+          <span class="stats" id="stats"></span>
+          <button class="btn tiny" id="copyBtn">复制</button>
+          <button class="btn tiny" id="downloadBtn">下载</button>
+        </div>
+      </div>
+      <div class="out jout" id="out"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SAMPLE = '{"title":"JSON在线解析","json.url":"https://www.json.cn",'
+    + '"keywords":"JSON在线解析","Function":["JSON美化","JSON数据类型显示",'
+    + '"JSON数组显示角标","高亮显示","错误提示","\\u003e","&nbsp;","","<h1>JSON在线解析</h1>"],'
+    + '"About":{"QQ":661275469},"Special":["&currency","$%^&*(@)"],'
+    + '"active":true,"score":98.5,"vip":null,"items":[{"sku":"A-1","qty":2},{"sku":"B-7","qty":1}]}';
+
+  var el = {
+    input: document.getElementById('input'),
+    out: document.getElementById('out'),
+    outTitle: document.getElementById('outTitle'),
+    stats: document.getElementById('stats'),
+    warn: document.getElementById('warn'),
+    segIndent: document.getElementById('segIndent'),
+    segSort: document.getElementById('segSort')
+  };
+
+  var opts = { indent: '2', sort: 'keep', mode: 'pretty' };
+  var last = { text: '', ok: false };
+  var data = null;
+
+  function esc(s) { return TB.escapeHtml(s); }
+
+  /* ------------------------------------------------ 值的着色 */
+  function valueHtml(v) {
+    if (v === null) return '<span class="jnull">null</span>';
+    switch (typeof v) {
+      case 'string': return '<span class="jstr">"' + esc(v) + '"</span>';
+      case 'number': return '<span class="jnum">' + String(v) + '</span>';
+      case 'boolean': return '<span class="jbool">' + String(v) + '</span>';
+      default: return esc(String(v));
+    }
+  }
+
+  function entriesOf(v) {
+    return Array.isArray(v)
+      ? v.map(function (x) { return { key: null, val: x }; })
+      : Object.keys(v).map(function (k) { return { key: k, val: v[k] }; });
+  }
+
+  /* ------------------------------------------------ 树渲染 */
+  // 生成一行：<缩进><开关>键: 值[,]
+  function primLine(indent, key, val, comma, toggle, nodeClass) {
+    var h = '<div class="jline' + (nodeClass ? ' ' + nodeClass : '') + '">'
+      + '<span class="jln"></span>'
+      + '<span class="jcode">'
+      + '<span class="jt' + (toggle ? '' : ' leaf') + '"' + (toggle ? ' data-toggle="1"' : '') + '></span>'
+      + indent;
+    if (key !== null) {
+      h += '<span class="jk">"' + esc(key) + '"</span><span class="jp">: </span>';
+    }
+    h += valueHtml(val);
+    if (comma) h += '<span class="jp">,</span>';
+    return h + '</span></div>';
+  }
+
+  function containerLine(indent, key, openCh, comma, isEmpty) {
+    var h = '<div class="jline">'
+      + '<span class="jln"></span>'
+      + '<span class="jcode">'
+      + '<span class="jt' + (isEmpty ? ' leaf' : '') + '"' + (isEmpty ? '' : ' data-toggle="1"') + '></span>'
+      + indent;
+    if (key !== null) h += '<span class="jk">"' + esc(key) + '"</span><span class="jp">: </span>';
+    // 开括号本身也可点击折叠
+    h += '<span class="jp jclick"' + (isEmpty ? '' : ' data-toggle="1"') + '>' + openCh + '</span>';
+    if (comma) h += '<span class="jp">,</span>';
+    return h + '</span></div>';
+  }
+
+  function renderNode(v, key, depth, comma, pad) {
+    var indent = pad.repeat(depth);
+
+    if (v === null || typeof v !== 'object') {
+      return primLine(indent, key, v, comma, false);
+    }
+
+    var isArr = Array.isArray(v);
+    var open = isArr ? '[' : '{';
+    var close = isArr ? ']' : '}';
+    var entries = entriesOf(v);
+    var h = '';
+
+    if (entries.length === 0) {
+      // 空对象 / 空数组
+      var one = indent + (key !== null ? '"' + esc(key) + '": ' : '') + open + close + (comma ? ',' : '');
+      return '<div class="jline"><span class="jln"></span><span class="jcode">'
+        + '<span class="jt leaf"></span>' + one + '</span></div>';
+    }
+
+    h += '<div class="jnode">';
+    h += containerLine(indent, key, open, comma, false);
+    h += '<div class="jchildren">';
+    entries.forEach(function (e, i) {
+      h += renderNode(e.val, e.key, depth + 1, i < entries.length - 1, pad);
+    });
+    h += '</div>';
+    // 折叠时的摘要
+    h += '<div class="jdots">'
+      + '<div class="jline"><span class="jln"></span><span class="jcode">'
+      + indent + pad + '<span class="jsummary">… ' + entries.length + ' 项</span>'
+      + '</span></div></div>';
+    // 结束符号与开始符号对齐：补一个和红方块同宽的占位
+    h += '<div class="jline jclose"><span class="jln"></span><span class="jcode">'
+      + '<span class="jt leaf"></span>' + indent
+      + '<span class="jp">' + close + '</span></span></div>';
+    h += '</div>';
+    return h;
+  }
+
+  /* ------------------------------------------------ 渲染主流程 */
+  function renderTree() {
+    if (!data) return;
+    var pad = opts.indent === 'tab' ? '\t' : (opts.indent === '4' ? '    ' : '  ');
+    el.out.innerHTML = renderNode(data, null, 0, false, pad);
+
+    var lines = countLines(data, pad);
+    el.stats.textContent = lines + ' 行 · ' + last.text.length + ' 字符';
+  }
+
+  function countLines(v, pad) {
+    // 展开状态下的行数 = JSON.stringify 的行数
+    return last.text ? last.text.split('\n').length : 1;
+  }
+
+  function showError(msg) {
+    el.out.innerHTML = '<div class="empty error"><strong>JSON 无法解析</strong>'
+      + '<span>' + esc(msg) + '</span></div>';
+    el.stats.textContent = '';
+    el.outTitle.textContent = '解析失败';
+    last = { text: '', ok: false };
+  }
+
+  function indentation() {
+    return opts.indent === 'tab' ? '\t' : parseInt(opts.indent, 10) || 2;
+  }
+
+  function sortDeep(v) {
+    if (Array.isArray(v)) return v.map(sortDeep);
+    if (v && typeof v === 'object') {
+      var out = {};
+      Object.keys(v).sort(function (a, b) { return a.localeCompare(b); })
+        .forEach(function (k) { out[k] = sortDeep(v[k]); });
+      return out;
+    }
+    return v;
+  }
+
+  function parseInput() {
+    var src = el.input.value.trim();
+    if (!src) return { empty: true };
+    try { return { data: JSON.parse(src) }; }
+    catch (e) { return { error: e.message }; }
+  }
+
+  function run() {
+    var trimmed = el.input.value.trim();
+
+    el.warn.textContent = '';
+    el.warn.classList.remove('show');
+
+    if (!trimmed) {
+      el.out.innerHTML = '<div class="empty"><strong>格式化结果会显示在这里</strong>'
+        + '<span>粘贴 JSON，按 <kbd data-kbd>⌘⏎</kbd> 立即排版</span></div>';
+      el.stats.textContent = '';
+      el.outTitle.textContent = '格式化结果';
+      data = null; last = { text: '', ok: false };
+      return;
+    }
+
+    var res = parseInput();
+    if (res.error) {
+      el.warn.textContent = '⚠ ' + res.error;
+      el.warn.classList.add('show');
+      showError(res.error);
+      return;
+    }
+
+    data = opts.sort === 'asc' ? sortDeep(res.data) : res.data;
+    last.text = opts.mode === 'compress'
+      ? JSON.stringify(data)
+      : JSON.stringify(data, null, indentation());
+    last.ok = true;
+    el.outTitle.textContent = opts.mode === 'compress' ? '压缩结果' : '格式化结果';
+    renderTree();
+  }
+
+  var runSoon = TB.debounce(run, 180);
+
+  /* ------------------------------------------------ 折叠交互 */
+  el.out.addEventListener('click', function (e) {
+    var t = e.target.closest('.jt, .jclick');
+    if (!t || t.classList.contains('leaf')) return;
+    var node = t.closest('.jnode');
+    if (node) node.classList.toggle('collapsed');
+    e.stopPropagation();
+  });
+
+  function setAll(collapse) {
+    Array.prototype.forEach.call(el.out.querySelectorAll('.jnode'), function (n) {
+      n.classList.toggle('collapsed', collapse);
+    });
+  }
+
+  /* ------------------------------------------------ 分段控件 */
+  TB.bindSeg(el.segIndent, opts.indent, function (v) {
+    opts.indent = v; opts.mode = 'pretty'; run();
+  });
+  TB.bindSeg(el.segSort, opts.sort, function (v) {
+    opts.sort = v; run();
+  });
+
+  /* ------------------------------------------------ 按钮 */
+  document.getElementById('formatBtn').addEventListener('click', function () {
+    opts.mode = 'pretty'; run();
+    if (last.ok) TB.toast('已格式化');
+  });
+
+  document.getElementById('compressBtn').addEventListener('click', function () {
+    opts.mode = 'compress'; run();
+    TB.toast('已压缩为单行');
+  });
+
+  document.getElementById('expandBtn').addEventListener('click', function () { setAll(false); });
+  document.getElementById('collapseBtn').addEventListener('click', function () { setAll(true); });
+
+  document.getElementById('sampleBtn').addEventListener('click', function () {
+    opts.mode = 'pretty';
+    el.input.value = SAMPLE;
+    run();
+    el.input.focus();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    el.input.value = '';
+    run();
+    el.input.focus();
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    if (!last.ok) { TB.toast('还没有可复制的结果'); return; }
+    TB.copyWithToast(last.text, last.text.indexOf('\n') === -1 ? '压缩后的 JSON' : '格式化后的 JSON');
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', function () {
+    if (!last.ok) { TB.toast('还没有可下载的结果'); return; }
+    var d = new Date();
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    var name = 'data-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+      + '-' + p(d.getHours()) + p(d.getMinutes()) + '.json';
+    var blob = new Blob([last.text + '\n'], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    TB.toast('已下载 .json 文件');
+  });
+
+  /* ------------------------------------------------ 交互细节 */
+  TB.bindRunKey(run);
+  TB.enableTabIndent(el.input, 2);
+
+  el.input.addEventListener('input', runSoon);
+  el.input.addEventListener('paste', function () { setTimeout(run, 0); });
+
+  ['dragover', 'drop'].forEach(function (t) {
+    el.input.addEventListener(t, function (e) { e.preventDefault(); });
+  });
+  el.input.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      el.input.value = String(r.result || '');
+      run();
+      TB.toast('已载入 ' + f.name);
+    };
+    r.readAsText(f, 'utf-8');
+  });
+
+  /* ------------------------------------------------ 启动 */
+  el.input.value = SAMPLE;
+  run();
+})();
+</script>
+</body>
+</html>
