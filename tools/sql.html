@@ -79,6 +79,7 @@
     <div class="actions">
       <button class="btn" id="sampleBtn">示例</button>
       <button class="btn" id="clearBtn">清空</button>
+      <button class="btn" id="fullBtn">全屏</button>
       <button class="btn primary" id="formatBtn">格式化 <kbd data-kbd>⌘⏎</kbd></button>
     </div>
   </div>
@@ -106,6 +107,7 @@
       <div class="out" id="out"></div>
     </section>
   </main>
+
 </div>
 
 <script>
@@ -275,7 +277,9 @@
 
   /* ------------------------------------------------ 交互细节 */
   TB.bindRunKey(run);
+  TB.bindFullscreenButton(document.getElementById('fullBtn'));
   TB.enableTabIndent(el.input, opts.indentSize);
+
 
   el.input.addEventListener('paste', function () { setTimeout(run, 0); });
 

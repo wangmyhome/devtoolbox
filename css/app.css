@@ -3,6 +3,104 @@
    深色为默认主题，可切换浅色；与 sql-formatter 页面同一套视觉语言
    =========================================================== */
 
+/* ------------------------------------------------ 护眼绿主题 */
+:root[data-theme="eye"] {
+  --bg: #c9e2c6;
+  --panel: #d9eed6;
+  --panel-head: #e2f3df;
+  --input-bg: #eaf6e7;
+  --border: #b3cfb0;
+  --border-soft: #c4dcc1;
+  --fg: #2f3b2f;
+  --fg-strong: #1c291c;
+  --muted: #5f7a5f;
+  --accent: #2e7d32;
+  --accent-soft: rgba(46, 125, 50, .14);
+  --btn-bg: #24512c;
+  --btn-fg: #ffffff;
+  --btn-2bg: transparent;
+  --btn-2fg: #3d5540;
+  --btn-2border: #a9c6a5;
+  --shadow: 0 1px 2px rgba(28,41,28,.06), 0 10px 28px -20px rgba(28,41,28,.5);
+  --sel: rgba(46,125,50,.22);
+
+  --tk-kw: #7b1fa2;
+  --tk-fn: #0277bd;
+  --tk-str: #33691e;
+  --tk-num: #b45309;
+  --tk-const: #be185d;
+  --tk-type: #0f766e;
+  --tk-comment: #8aa08a;
+  --tk-op: #4b5764;
+  --tk-punct: #7d8f7d;
+  --tk-ident: #22301f;
+  --tk-var: #a21caf;
+  --tk-key: #1d4ed8;
+  --tk-bool: #be185d;
+  --tk-null: #be185d;
+
+  --ok-bg: rgba(46,125,50,.12);
+  --ok-fg: #1b5e20;
+  --err-bg: rgba(198,40,40,.10);
+  --err-fg: #c62828;
+  --warn-fg: #b45309;
+  --warn-bg: rgba(180,83,9,.10);
+  --add-bg: rgba(46,125,50,.14);
+  --add-fg: #1b5e20;
+  --del-bg: rgba(198,40,40,.12);
+  --del-fg: #b71c1c;
+  --hl: rgba(46,125,50,.16);
+}
+
+/* ------------------------------------------------ 暖米黄主题 */
+:root[data-theme="solar"] {
+  --bg: #f3ecda;
+  --panel: #fbf6e9;
+  --panel-head: #f4eedd;
+  --input-bg: #fffdf4;
+  --border: #e0d4b6;
+  --border-soft: #eae1c9;
+  --fg: #4a3f2a;
+  --fg-strong: #332a18;
+  --muted: #8d8064;
+  --accent: #b45309;
+  --accent-soft: rgba(180, 83, 9, .12);
+  --btn-bg: #4a3f2a;
+  --btn-fg: #fffdf4;
+  --btn-2bg: transparent;
+  --btn-2fg: #6b5d3e;
+  --btn-2border: #ddd0ae;
+  --shadow: 0 1px 2px rgba(51,42,24,.05), 0 10px 28px -20px rgba(51,42,24,.45);
+  --sel: rgba(180,83,9,.18);
+
+  --tk-kw: #9a3412;
+  --tk-fn: #0369a1;
+  --tk-str: #3f6212;
+  --tk-num: #b45309;
+  --tk-const: #be185d;
+  --tk-type: #0f766e;
+  --tk-comment: #a29376;
+  --tk-op: #6b5d3e;
+  --tk-punct: #a29376;
+  --tk-ident: #332a18;
+  --tk-var: #a21caf;
+  --tk-key: #1d4ed8;
+  --tk-bool: #be185d;
+  --tk-null: #be185d;
+
+  --ok-bg: rgba(46,125,50,.12);
+  --ok-fg: #1b5e20;
+  --err-bg: rgba(198,40,40,.10);
+  --err-fg: #c62828;
+  --warn-fg: #b45309;
+  --warn-bg: rgba(180,83,9,.10);
+  --add-bg: rgba(46,125,50,.14);
+  --add-fg: #1b5e20;
+  --del-bg: rgba(198,40,40,.12);
+  --del-fg: #b71c1c;
+  --hl: rgba(180,83,9,.15);
+}
+
 :root[data-theme="dark"] {
   --bg: #0b0d12;
   --panel: #11141b;
@@ -290,7 +388,7 @@ h1 {
 .icon-btn:hover { color: var(--fg-strong); border-color: var(--accent); }
 .icon-btn svg { width: 16px; height: 16px; }
 :root[data-theme="dark"] .ico-sun { display: none; }
-:root[data-theme="light"] .ico-moon { display: none; }
+:root:not([data-theme="dark"]) .ico-moon { display: none; }
 
 /* ------------------------------------------------------------ 双栏 */
 .panes {
@@ -746,6 +844,10 @@ textarea:focus { box-shadow: inset 0 0 0 1px rgba(99,102,241,.35); }
     transition-duration: .01ms !important;
   }
 }
+
+/* 全屏时放开页面宽度上限 */
+:fullscreen .wrap,
+:-webkit-full-screen .wrap { max-width: none; }
 
 /* ------------------------------------------------------------ 窄屏 */
 @media (max-width: 900px) {

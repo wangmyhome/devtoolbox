@@ -135,6 +135,7 @@
       <button class="btn" id="sampleBtn">示例</button>
       <button class="btn" id="swapBtn">交换 A/B</button>
       <button class="btn" id="clearBtn">清空</button>
+      <button class="btn" id="fullBtn">全屏</button>
       <button class="btn" id="copyBtn">复制差异</button>
       <button class="btn primary" id="diffBtn">开始对比 <kbd data-kbd>⌘⏎</kbd></button>
     </div>
@@ -408,6 +409,7 @@
   });
 
   TB.bindRunKey(run);
+  TB.bindFullscreenButton(document.getElementById('fullBtn'));
   TB.enableTabIndent(el.a, 2);
   TB.enableTabIndent(el.b, 2);
 

@@ -50,6 +50,7 @@
     padding-right: 10px;
     text-align: right;
     color: var(--muted);
+    opacity: .55;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -57,31 +58,124 @@
 
   .jcode { white-space: pre; flex: 1 1 auto; min-width: 0; }
 
-  /* 折叠开关：红色小方块 −/+ */
+  /* 折叠开关：FeHelper 式小箭头 */
   .jt {
     display: inline-grid;
     place-items: center;
-    width: 13px; height: 13px;
-    margin-right: 6px;
-    border-radius: 3px;
-    background: var(--jtoggle);
-    color: #fff;
-    font: 700 11px/1 ui-monospace, Menlo, monospace;
+    width: 14px; height: 14px;
+    margin-right: 5px;
+    color: var(--muted);
+    font: 700 9px/1 ui-monospace, Menlo, monospace;
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
     vertical-align: -1px;
-    transition: transform .1s ease;
+    border-radius: 4px;
+    transition: color .12s ease, background .12s ease;
   }
-  .jt:hover { transform: scale(1.15); }
+  .jt:hover { color: var(--accent); background: var(--accent-soft); }
   .jt.leaf { visibility: hidden; }
+
+  .jnode { position: relative; }
+  .jnode > .jline .jt::before { content: "▼"; }
+  .jnode.collapsed > .jline .jt::before { content: "▶"; }
+
+  /* 开括号到闭括号的虚线引导线：在父节点括号列位置 */
+  .jnode::before {
+    content: "";
+    position: absolute;
+    left: calc(2.8em + 10px + 19px + var(--d, 0) * 2ch - 2px);
+    top: 1.75em;
+    bottom: 1.75em;
+    border-left: 1px dashed var(--jguide);
+    pointer-events: none;
+  }
+  :root { --jguide: rgba(127,127,127,.35); }
+
+  /* 悬停开括号行或闭括号行：高亮整个块（开始到结束） */
+  .jnode:has(> .jline:first-child:hover),
+  .jnode:has(> .jline.jclose:hover) {
+    background: var(--hl);
+    border-radius: 6px;
+  }
 
   /* 可点击的开括号 */
   .jclick { cursor: pointer; }
-  .jclick:hover { color: var(--jtoggle); text-shadow: 0 0 8px rgba(232,72,63,.5); }
+  .jclick:hover { color: var(--accent); }
 
-  /* 折叠时高亮开括号，提示当前收起范围 */
-  .jnode.collapsed > .jline .jclick { color: var(--jtoggle); }
+  /* 输入区弱化：文字用柔和的次要色，视觉重心放在右侧结果 */
+  #input { color: var(--muted); font-size: 13px; }
+  #input::selection { background: var(--sel); }
+
+  /* 醒目的模式切换控件 */
+  .seg.prominent { padding: 3px; border-radius: 10px; }
+  .seg.prominent button {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 18px;
+  }
+  .seg.prominent button[aria-pressed="true"] {
+    background: linear-gradient(145deg, #6d6ff2, #5548d6);
+    color: #fff;
+    box-shadow: 0 4px 12px -4px rgba(99,102,241,.8);
+  }
+
+  /* ------------------------------------------------ 表格视图弹窗 */
+  .modal-mask {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    display: grid; place-items: center;
+    z-index: 50;
+    animation: fadeIn .15s ease both;
+  }
+  .modal-mask.hidden { display: none; }
+  .modal-panel {
+    width: min(920px, 92vw);
+    max-height: 82vh;
+    display: flex; flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: fadeUp .2s ease both;
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--panel-head);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .modal-head .pane-title { font-size: 13px; }
+  .modal-body { overflow: auto; padding: 0; }
+  .modal-body table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12.5px;
+  }
+  .modal-body th, .modal-body td {
+    border-bottom: 1px solid var(--border-soft);
+    border-right: 1px solid var(--border-soft);
+    padding: 7px 12px;
+    text-align: left;
+    white-space: nowrap;
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .modal-body th {
+    position: sticky; top: 0;
+    background: var(--panel-head);
+    color: var(--fg-strong);
+    font-weight: 600;
+    z-index: 1;
+  }
+  .modal-body tr:hover td { background: rgba(127,127,127,.05); }
+  .modal-body td.nested { color: var(--muted); font-style: italic; }
+  .modal-body .rownum {
+    color: var(--muted); opacity: .6;
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
 
   .jk     { color: var(--jk); font-weight: 600; }
   .jstr   { color: var(--jstr); }
@@ -117,7 +211,7 @@
         </div>
         <div>
           <h1>JSON 格式化</h1>
-          <p class="sub">json.cn 同款配色；点击红色方块折叠 / 展开</p>
+          <p class="sub">格式化、压缩、校验 JSON，错误定位行列</p>
         </div>
       </a>
     </div>
@@ -153,22 +247,30 @@
           <button data-value="asc">字母升序</button>
         </div>
       </div>
+      <div class="opt">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted)">
+          <input type="checkbox" id="keepEsc" style="accent-color:var(--accent);width:14px;height:14px">
+          保留 \uXXXX 转义
+        </label>
+      </div>
     </div>
     <div class="actions">
       <button class="btn" id="sampleBtn">示例</button>
-      <button class="btn" id="clearBtn">清空</button>
-      <button class="btn" id="expandBtn">全部展开</button>
-      <button class="btn" id="collapseBtn">全部折叠</button>
-      <button class="btn" id="compressBtn">压缩</button>
-      <button class="btn primary" id="formatBtn">格式化 <kbd data-kbd>⌘⏎</kbd></button>
+      <div class="seg prominent" id="segMode" role="group" aria-label="显示模式">
+        <button data-value="pretty">☰ 格式化</button>
+        <button data-value="compress">≡ 压缩</button>
+      </div>
+      <button class="btn" id="toggleBtn">全部折叠</button>
+      <button class="btn" id="tableBtn">表格视图</button>
+      <button class="btn" id="fullBtn">全屏</button>
     </div>
   </div>
 
-  <main class="panes">
+  <main class="panes asym">
     <section class="pane">
       <div class="pane-head">
         <span class="pane-title">输入</span>
-        <span class="hint">粘贴或拖入 .json 文件</span>
+        <span class="hint">保持粘贴的原格式</span>
       </div>
       <textarea id="input" spellcheck="false" autocapitalize="off" autocomplete="off"
         placeholder='{"name":"张三","age":18,"tags":["dev","mac"]}'></textarea>
@@ -187,13 +289,27 @@
       <div class="out jout" id="out"></div>
     </section>
   </main>
+
+  <div class="modal-mask hidden" id="tableModal">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <span class="pane-title">表格视图 · <span id="tableNote"></span></span>
+        <div class="pane-tools">
+          <button class="btn tiny" id="csvBtn">下载 CSV</button>
+          <button class="btn tiny" id="mdBtn">下载 MD</button>
+          <button class="btn tiny" id="tableCloseBtn">关闭 (Esc)</button>
+        </div>
+      </div>
+      <div class="modal-body" id="tableOut"></div>
+    </div>
+  </div>
 </div>
 
 <script>
 (function () {
   'use strict';
 
-  var SAMPLE = '{"title":"JSON在线解析","json.url":"https://www.json.cn",'
+  var SAMPLE = '{"title":"JSON在线解析","json.url":"https://wangmyhome.github.io/devtoolbox/tools/json.html",'
     + '"keywords":"JSON在线解析","Function":["JSON美化","JSON数据类型显示",'
     + '"JSON数组显示角标","高亮显示","错误提示","\\u003e","&nbsp;","","<h1>JSON在线解析</h1>"],'
     + '"About":{"QQ":661275469},"Special":["&currency","$%^&*(@)"],'
@@ -201,19 +317,168 @@
 
   var el = {
     input: document.getElementById('input'),
+    keepEsc: document.getElementById('keepEsc'),
     out: document.getElementById('out'),
     outTitle: document.getElementById('outTitle'),
     stats: document.getElementById('stats'),
     warn: document.getElementById('warn'),
     segIndent: document.getElementById('segIndent'),
-    segSort: document.getElementById('segSort')
+    segSort: document.getElementById('segSort'),
+    segMode: document.getElementById('segMode')
   };
 
-  var opts = { indent: '2', sort: 'keep', mode: 'pretty' };
+  var opts = { indent: '2', sort: 'keep', mode: 'pretty', keepEsc: false };
   var last = { text: '', ok: false };
   var data = null;
 
   function esc(s) { return TB.escapeHtml(s); }
+
+  /* ------------------------------------------------ 输入区原格式高亮
+     逐 token 扫描，不改变文字内容，只加颜色；保留原始缩进与换行 */
+  var RE_TOK = /("(?:[^"\\]|\\.)*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}\[\],:])|(\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$))|(\s+)|(.)/g;
+
+  function rawHighlight(text) {
+    var html = '';
+    var m;
+    RE_TOK.lastIndex = 0;
+    while ((m = RE_TOK.exec(text))) {
+      if (m[1] !== undefined) {
+        // 字符串：后面跟冒号的是键名
+        html += m[2]
+          ? '<span class="jk">' + esc(m[1]) + '</span><span class="jp">' + esc(m[2]) + '</span>'
+          : '<span class="jstr">' + esc(m[1]) + '</span>';
+      } else if (m[3] !== undefined) {
+        html += '<span class="jnum">' + esc(m[3]) + '</span>';
+      } else if (m[4] !== undefined) {
+        html += '<span class="jbool">' + esc(m[4]) + '</span>';
+      } else if (m[5] !== undefined) {
+        html += '<span class="jp">' + esc(m[5]) + '</span>';
+      } else if (m[6] !== undefined) {
+        html += '<span class="tok-comment">' + esc(m[6]) + '</span>';
+      } else {
+        html += esc(m[0]);
+      }
+    }
+    return { code: html };
+  }
+
+  /* ------------------------------------------------ 表格视图 */
+  function cellHtml(v) {
+    if (v === null) return '<span class="jnull">null</span>';
+    switch (typeof v) {
+      case 'string': return '<span class="jstr">' + esc(v) + '</span>';
+      case 'number': return '<span class="jnum">' + String(v) + '</span>';
+      case 'boolean': return '<span class="jbool">' + String(v) + '</span>';
+    }
+    var s = JSON.stringify(v);
+    if (s.length > 80) s = s.slice(0, 80) + '…';
+    return '<span class="nested" title="' + esc(JSON.stringify(v)) + '">' + esc(s) + '</span>';
+  }
+
+  // 通用表格数据：返回 { headers, rows }，供 HTML / CSV / MD 共用
+  function tableData(data) {
+    var plain = function (v) {
+      if (v === null) return 'null';
+      if (typeof v === 'object') return JSON.stringify(v);
+      return String(v);
+    };
+    if (Array.isArray(data)) {
+      var cols = [];
+      var seen = {};
+      data.forEach(function (item) {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          Object.keys(item).forEach(function (k) {
+            if (!seen[k]) { seen[k] = true; cols.push(k); }
+          });
+        }
+      });
+      var headers = cols.length ? cols : ['value'];
+      var rows = data.map(function (item) {
+        if (cols.length) {
+          return headers.map(function (k) {
+            var v = (item && typeof item === 'object' && !Array.isArray(item)) ? item[k] : undefined;
+            return v === undefined ? '' : plain(v);
+          });
+        }
+        return [plain(item)];
+      });
+      return { headers: headers, rows: rows };
+    }
+    if (data && typeof data === 'object') {
+      return {
+        headers: ['键', '值'],
+        rows: Object.keys(data).map(function (k) { return [k, plain(data[k])]; })
+      };
+    }
+    return { headers: ['值'], rows: [[plain(data)]] };
+  }
+
+  function buildTable(data) {
+    var t = tableData(data);
+    var html = '<table><thead><tr><th class="rownum">#</th>';
+    t.headers.forEach(function (k) { html += '<th>' + esc(k) + '</th>'; });
+    html += '</tr></thead><tbody>';
+    t.rows.forEach(function (row, i) {
+      html += '<tr><td class="rownum">' + (i + 1) + '</td>';
+      row.forEach(function (cell) { html += '<td>' + cellHtml(cell) + '</td>'; });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    var note = t.rows.length + ' 行 × ' + t.headers.length + ' 列';
+    return { html: html, note: note, headers: t.headers, rows: t.rows };
+  }
+
+  /* CSV：逗号/引号/换行转义，带 BOM 方便 Excel 打开中文 */
+  function csvCell(s) {
+    if (/[,"\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  function toCsv(t) {
+    var lines = [t.headers.map(csvCell).join(',')];
+    t.rows.forEach(function (row) {
+      lines.push(row.map(csvCell).join(','));
+    });
+    return '\uFEFF' + lines.join('\r\n') + '\r\n';
+  }
+  function toMd(t) {
+    var md = '| # | ' + t.headers.map(function (h) {
+      return String(h).replace(/\|/g, '\\|').replace(/\n/g, '<br>');
+    }).join(' | ') + ' |\n';
+    md += '| - ' + t.headers.map(function () { return '| - '; }).join('') + '|\n';
+    t.rows.forEach(function (row, i) {
+      md += '| ' + (i + 1) + ' | ' + row.map(function (c) {
+        return String(c).replace(/\|/g, '\\|').replace(/\n/g, '<br>');
+      }).join(' | ') + ' |\n';
+    });
+    return md;
+  }
+  function downloadText(text, ext) {
+    var d = new Date();
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    var name = 'table-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+      + '-' + p(d.getHours()) + p(d.getMinutes()) + '.' + ext;
+    var mime = ext === 'csv' ? 'text/csv;charset=utf-8' : 'text/markdown;charset=utf-8';
+    var blob = new Blob([text], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  var currentTable = null;
+
+  function openTable() {
+    if (!last.ok || data == null) { TB.toast('请先格式化出有效的 JSON'); return; }
+    var r = buildTable(data);
+    currentTable = r;
+    document.getElementById('tableOut').innerHTML = r.html;
+    document.getElementById('tableNote').textContent = r.note;
+    document.getElementById('tableModal').classList.remove('hidden');
+  }
+  function closeTable() {
+    document.getElementById('tableModal').classList.add('hidden');
+  }
 
   /* 剥离注释（// 与 /*），跳过字符串内部，避免误伤值里的双斜杠 */
   function stripJsonComments(src) {
@@ -318,7 +583,7 @@
         + '<span class="jt leaf"></span>' + one + '</span></div>';
     }
 
-    h += '<div class="jnode">';
+    h += '<div class="jnode" style="--d:' + depth + '">';
     h += containerLine(indent, key, open, comma, false);
     h += '<div class="jchildren">';
     entries.forEach(function (e, i) {
@@ -353,9 +618,50 @@
     return last.text ? last.text.split('\n').length : 1;
   }
 
+  /* 把浏览器原始报错翻译成友好提示，并计算行号/列号 */
+  function friendlyError(errMsg, src) {
+    var line = 0, col = 0;
+    var pm = /position (\d+)/i.exec(errMsg);
+    if (pm && src) {
+      var pos = Math.min(+pm[1], src.length);
+      var before = src.slice(0, pos);
+      line = before.split('\n').length;
+      col = pos - before.lastIndexOf('\n');
+    }
+    var tip;
+    var s = errMsg;
+    if (/Unexpected end of JSON input/i.test(s)) {
+      tip = 'JSON 不完整：可能缺少结尾的 } 或 ]，或字符串引号没有闭合';
+    } else if (/Expected property name/i.test(s)) {
+      tip = '键名必须用英文双引号包裹（如 "name"），不能单引号或不加引号；也检查上一行末尾是否多了逗号';
+    } else if (/Expected double-quoted/i.test(s)) {
+      tip = '键名必须用英文双引号包裹';
+    } else if (/Expected ',' or '\}'/i.test(s)) {
+      tip = '对象里可能少了逗号，或 } 没有闭合；也检查是否用了中文逗号';
+    } else if (/Expected ',' or '\]'/i.test(s)) {
+      tip = '数组里可能少了逗号，或 ] 没有闭合；也检查是否用了中文逗号';
+    } else if (/non-whitespace/i.test(s)) {
+      tip = 'JSON 已经结束，但后面还有多余的内容：检查是否多了字符或多了 ] }';
+    } else if (/Unexpected token/i.test(s)) {
+      var tok = /Unexpected token (.+?)[ ,]/i.exec(s);
+      tip = '出现意外的字符' + (tok ? '「' + tok[1] + '」' : '')
+        + '：检查上一行是否少了逗号、字符串是否用了单引号或中文引号';
+    } else if (/No number after minus/i.test(s)) {
+      tip = '负号 - 后面必须是数字';
+    } else if (/Bad escaped/i.test(s)) {
+      tip = '字符串里的反斜杠 \\ 使用不正确（如想表示 \\ 本身要写 \\\\ ）';
+    } else if (/Bad control/i.test(s)) {
+      tip = '字符串里包含了不允许的换行/控制字符，请改用 \\n 转义';
+    } else {
+      tip = s;
+    }
+    var loc = line ? '第 ' + line + ' 行第 ' + col + ' 列附近：' : '';
+    return loc + tip;
+  }
+
   function showError(msg) {
     el.out.innerHTML = '<div class="empty error"><strong>JSON 无法解析</strong>'
-      + '<span>' + esc(msg) + '</span></div>';
+      + '<span style="white-space:normal;line-height:1.8;max-width:26em">' + esc(msg) + '</span></div>';
     el.stats.textContent = '';
     el.outTitle.textContent = '解析失败';
     last = { text: '', ok: false };
@@ -380,7 +686,12 @@
     var src = el.input.value.trim();
     if (!src) return { empty: true };
     var stripped = stripJsonComments(src);
-    try { return { data: JSON.parse(stripped.text), comments: stripped.comments }; }
+    var text = stripped.text;
+    if (opts.keepEsc) {
+      // 保留 \uXXXX 转义：把反斜杠双写，解析后就是字面量文本「\u003e」
+      text = text.replace(/\\u([0-9a-fA-F]{4})/g, '\\\\u$1');
+    }
+    try { return { data: JSON.parse(text), comments: stripped.comments }; }
     catch (e) { return { error: e.message, comments: stripped.comments }; }
   }
 
@@ -401,9 +712,10 @@
 
     var res = parseInput();
     if (res.error) {
-      el.warn.textContent = '⚠ ' + res.error;
+      var friendly = friendlyError(res.error, el.input.value);
+      el.warn.textContent = '⚠ ' + friendly;
       el.warn.classList.add('show');
-      showError(res.error);
+      showError(friendly);
       return;
     }
 
@@ -413,7 +725,14 @@
       : JSON.stringify(data, null, indentation());
     last.ok = true;
     el.outTitle.textContent = opts.mode === 'compress' ? '压缩结果' : '格式化结果';
-    renderTree();
+    if (opts.mode === 'compress') {
+      // 压缩模式：直接显示压缩后的单行文本，不走折叠树
+      el.out.innerHTML = '<div class="line"><span class="ln">1</span>'
+        + '<span class="code">' + rawHighlight(last.text).code + '</span></div>';
+      el.stats.textContent = '1 行 · ' + last.text.length + ' 字符';
+    } else {
+      renderTree();
+    }
     if (res.comments > 0) {
       el.warn.textContent = 'ℹ 已忽略 ' + res.comments + ' 段注释（// 与 /* */）；复制 / 下载的结果不含注释';
       el.warn.classList.add('show');
@@ -435,39 +754,57 @@
     Array.prototype.forEach.call(el.out.querySelectorAll('.jnode'), function (n) {
       n.classList.toggle('collapsed', collapse);
     });
+    updateToggleLabel();
   }
 
+  // 展开/折叠合并为一个智能切换按钮：有折叠就全部展开，否则全部折叠
+  function updateToggleLabel() {
+    var anyCollapsed = !!el.out.querySelector('.jnode.collapsed');
+    document.getElementById('toggleBtn').textContent = anyCollapsed ? '全部展开' : '全部折叠';
+  }
+
+  document.getElementById('toggleBtn').addEventListener('click', function () {
+    // 压缩模式下先回到格式化（树形）视图
+    if (opts.mode !== 'pretty') {
+      opts.mode = 'pretty';
+      TB.syncSeg(el.segMode, 'pretty');
+      run();
+      updateToggleLabel();
+      TB.toast('已切换到格式化视图');
+      return;
+    }
+    var anyCollapsed = !!el.out.querySelector('.jnode.collapsed');
+    setAll(!anyCollapsed);
+  });
+
   /* ------------------------------------------------ 分段控件 */
+  TB.bindSeg(el.segMode, opts.mode, function (v) {
+    opts.mode = v;
+    run();
+    TB.toast(v === 'compress' ? '已压缩为单行' : '已切换到格式化');
+  });
   TB.bindSeg(el.segIndent, opts.indent, function (v) {
-    opts.indent = v; opts.mode = 'pretty'; run();
+    opts.indent = v; opts.mode = 'pretty'; TB.syncSeg(el.segMode, 'pretty'); run();
   });
   TB.bindSeg(el.segSort, opts.sort, function (v) {
     opts.sort = v; run();
   });
 
+  // 保留转义开关（记忆偏好）
+  var ESC_KEY = 'devtoolbox.json.keepesc.v1';
+  try { opts.keepEsc = localStorage.getItem(ESC_KEY) === '1'; } catch (e) {}
+  el.keepEsc.checked = opts.keepEsc;
+  el.keepEsc.addEventListener('change', function () {
+    opts.keepEsc = el.keepEsc.checked;
+    try { localStorage.setItem(ESC_KEY, opts.keepEsc ? '1' : '0'); } catch (e) {}
+    run();
+  });
+
   /* ------------------------------------------------ 按钮 */
-  document.getElementById('formatBtn').addEventListener('click', function () {
-    opts.mode = 'pretty'; run();
-    if (last.ok) TB.toast('已格式化');
-  });
-
-  document.getElementById('compressBtn').addEventListener('click', function () {
-    opts.mode = 'compress'; run();
-    TB.toast('已压缩为单行');
-  });
-
-  document.getElementById('expandBtn').addEventListener('click', function () { setAll(false); });
-  document.getElementById('collapseBtn').addEventListener('click', function () { setAll(true); });
-
   document.getElementById('sampleBtn').addEventListener('click', function () {
     opts.mode = 'pretty';
+    TB.syncSeg(el.segMode, 'pretty');
     el.input.value = SAMPLE;
-    run();
-    el.input.focus();
-  });
-
-  document.getElementById('clearBtn').addEventListener('click', function () {
-    el.input.value = '';
     run();
     el.input.focus();
   });
@@ -499,6 +836,26 @@
   el.input.addEventListener('input', runSoon);
   el.input.addEventListener('paste', function () { setTimeout(run, 0); });
 
+  /* ------------------------------------------------ 表格视图事件 */
+  document.getElementById('tableBtn').addEventListener('click', openTable);
+  document.getElementById('tableCloseBtn').addEventListener('click', closeTable);
+  document.getElementById('csvBtn').addEventListener('click', function () {
+    if (!currentTable) { TB.toast('没有表格数据'); return; }
+    downloadText(toCsv(currentTable), 'csv');
+    TB.toast('已下载 CSV（带 BOM，Excel 可直接打开）');
+  });
+  document.getElementById('mdBtn').addEventListener('click', function () {
+    if (!currentTable) { TB.toast('没有表格数据'); return; }
+    downloadText(toMd(currentTable), 'md');
+    TB.toast('已下载 Markdown 表格');
+  });
+  document.getElementById('tableModal').addEventListener('click', function (e) {
+    if (e.target === this) closeTable();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeTable();
+  });
+
   ['dragover', 'drop'].forEach(function (t) {
     el.input.addEventListener(t, function (e) { e.preventDefault(); });
   });
@@ -514,9 +871,14 @@
     r.readAsText(f, 'utf-8');
   });
 
+  /* ------------------------------------------------ 全屏 */
+  TB.bindFullscreenButton(document.getElementById('fullBtn'));
+
   /* ------------------------------------------------ 启动 */
   el.input.value = SAMPLE;
   run();
+  // 光标定位到文本末尾
+  el.input.setSelectionRange(el.input.value.length, el.input.value.length);
 })();
 </script>
 </body>

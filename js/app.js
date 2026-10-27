@@ -5,6 +5,12 @@
   'use strict';
 
   var THEME_KEY = 'devtoolbox.theme.v1';
+  var THEMES = [
+    { id: 'dark',  name: '深色' },
+    { id: 'light', name: '浅色' },
+    { id: 'eye',   name: '护眼绿' },
+    { id: 'solar', name: '暖米黄' }
+  ];
 
   /* ------------------------------------------------ 主题 */
   function applyTheme(t) {
@@ -17,7 +23,7 @@
     if (q) { applyTheme(q[1]); return; }
     var saved = null;
     try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
-    if (saved === 'light' || saved === 'dark') { applyTheme(saved); return; }
+    if (THEMES.some(function (t) { return t.id === saved; })) { applyTheme(saved); return; }
     var light = global.matchMedia && global.matchMedia('(prefers-color-scheme: light)').matches;
     applyTheme(light ? 'light' : 'dark');
   }
@@ -27,7 +33,12 @@
     var btn = document.getElementById('themeBtn');
     if (!btn) return;
     btn.addEventListener('click', function () {
-      applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+      var cur = document.documentElement.dataset.theme || 'dark';
+      var idx = 0;
+      THEMES.forEach(function (t, i) { if (t.id === cur) idx = i; });
+      var next = THEMES[(idx + 1) % THEMES.length];
+      applyTheme(next.id);
+      if (global.TB && global.TB.toast) global.TB.toast('主题：' + next.name);
     });
   }
 
@@ -150,6 +161,27 @@
     });
   }
 
+  /* ------------------------------------------------ 全屏切换
+    btnId: 按钮元素，进入全屏后文字自动变「退出全屏」*/
+  function bindFullscreenButton(btn) {
+    if (!btn) return;
+    function isFs() { return !!document.fullscreenElement; }
+    btn.addEventListener('click', function () {
+      if (isFs()) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen().catch(function () {
+          toast('浏览器拒绝了全屏请求');
+        });
+      }
+    });
+    document.addEventListener('fullscreenchange', function () {
+      var on = isFs();
+      btn.textContent = on ? '退出全屏' : '全屏';
+      toast(on ? '已进入全屏，按 Esc 退出' : '已退出全屏');
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     bindThemeButton();
     fillKbdHints();
@@ -167,6 +199,8 @@
     escapeHtml: escapeHtml,
     enableTabIndent: enableTabIndent,
     bindRunKey: bindRunKey,
+    fillKbdHints: fillKbdHints,
+    bindFullscreenButton: bindFullscreenButton,
     setTheme: applyTheme
   };
 })(window);
