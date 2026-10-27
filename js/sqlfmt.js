@@ -108,8 +108,8 @@
       if (c === '\n') { line++; i++; continue; }
       if (c === ' ' || c === '\t' || c === '\r' || c === ' ' || c === '　') { i++; continue; }
 
-      // 行注释
-      if ((c === '-' && src[i + 1] === '-') || c === '#') {
+      // 行注释（含 Java 风格 //）
+      if ((c === '-' && src[i + 1] === '-') || c === '#' || (c === '/' && src[i + 1] === '/')) {
         var e = src.indexOf('\n', i);
         if (e < 0) e = n;
         out.push({ t: 'comment', v: src.slice(i, e).replace(/\s+$/, ''), line: true, ln: line, s: i, e: e });

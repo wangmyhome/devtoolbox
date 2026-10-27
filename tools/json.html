@@ -215,6 +215,43 @@
 
   function esc(s) { return TB.escapeHtml(s); }
 
+  /* 剥离注释（// 与 /*），跳过字符串内部，避免误伤值里的双斜杠 */
+  function stripJsonComments(src) {
+    var out = '';
+    var i = 0, n = src.length;
+    var inStr = false;
+    var commentCount = 0;
+    while (i < n) {
+      var c = src[i];
+      if (inStr) {
+        out += c;
+        if (c === '\\') { out += src[i + 1] || ''; i += 2; continue; }
+        if (c === '"') inStr = false;
+        i++;
+        continue;
+      }
+      if (c === '"') { inStr = true; out += c; i++; continue; }
+      if (c === '/' && src[i + 1] === '/') {
+        commentCount++;
+        while (i < n && src[i] !== '\n') i++;
+        out += '\n';
+        continue;
+      }
+      if (c === '/' && src[i + 1] === '*') {
+        commentCount++;
+        var end = src.indexOf('*/', i + 2);
+        if (end < 0) { i = n; out += '\n'; break; }
+        var nl = (src.slice(i, end + 2).match(/\n/g) || []).length;
+        for (var k = 0; k < nl; k++) out += '\n';
+        i = end + 2;
+        continue;
+      }
+      out += c;
+      i++;
+    }
+    return { text: out, comments: commentCount };
+  }
+
   /* ------------------------------------------------ 值的着色 */
   function valueHtml(v) {
     if (v === null) return '<span class="jnull">null</span>';
@@ -342,8 +379,9 @@
   function parseInput() {
     var src = el.input.value.trim();
     if (!src) return { empty: true };
-    try { return { data: JSON.parse(src) }; }
-    catch (e) { return { error: e.message }; }
+    var stripped = stripJsonComments(src);
+    try { return { data: JSON.parse(stripped.text), comments: stripped.comments }; }
+    catch (e) { return { error: e.message, comments: stripped.comments }; }
   }
 
   function run() {
@@ -376,6 +414,10 @@
     last.ok = true;
     el.outTitle.textContent = opts.mode === 'compress' ? '压缩结果' : '格式化结果';
     renderTree();
+    if (res.comments > 0) {
+      el.warn.textContent = 'ℹ 已忽略 ' + res.comments + ' 段注释（// 与 /* */）；复制 / 下载的结果不含注释';
+      el.warn.classList.add('show');
+    }
   }
 
   var runSoon = TB.debounce(run, 180);
