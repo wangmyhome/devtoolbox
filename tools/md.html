@@ -622,11 +622,26 @@
   /* ================================================================
      七、启动
      ================================================================ */
+  /* 支持从 URL hash 直接载入本地文件：
+     #md=<urlencoded markdown>&name=<文件名> */
+  var hashMd = null, hashName = '';
+  var hm = /[#&]md=([^&]*)/.exec(location.hash || '');
+  if (hm) {
+    try { hashMd = decodeURIComponent(hm[1]); } catch (e) {}
+    var nm = /[#&]name=([^&]*)/.exec(location.hash || '');
+    if (nm) { try { hashName = decodeURIComponent(nm[1]); } catch (e2) {} }
+  }
+
   var draft = null;
   try { draft = localStorage.getItem(STORE_KEY); } catch (e) {}
-  el.editor.value = draft != null ? draft : SAMPLE;
+  el.editor.value = hashMd != null ? hashMd : (draft != null ? draft : SAMPLE);
   render();
-  if (draft == null) saveDraft();
+  saveDraft();
+
+  if (hashMd != null) {
+    if (hashName) document.title = hashName + ' · Markdown 编辑预览 · DevToolbox';
+    TB.toast('已载入' + (hashName ? ' ' + hashName : '本地 Markdown 文件'));
+  }
 })();
 </script>
 </body>
