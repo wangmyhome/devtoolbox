@@ -250,8 +250,11 @@
     el.statsHtml.textContent = el.preview.querySelectorAll('*').length + ' 个元素';
   }
 
+  var previewDirty = false;
+
   function render() {
     el.preview.innerHTML = window.marked.parse(el.editor.value);
+    previewDirty = false;
     updateStats();
     buildToc();
   }
@@ -407,9 +410,11 @@
 
   /* 预览 DOM → Markdown 源码（同步执行，供按钮/切换视图前强制回写） */
   function flushPreviewEdits() {
+    if (!previewDirty) return;
     var md = domToMarkdown(el.preview);
     if (md === el.editor.value) return;
     el.editor.value = md;
+    previewDirty = false;
     saveDraft();
     updateStats();
   }
@@ -420,6 +425,7 @@
   }, 260);
 
   el.preview.addEventListener('input', function () {
+    previewDirty = true;
     syncToSource();
   });
 
@@ -596,6 +602,7 @@
   });
 
   document.getElementById('copyMdBtn').addEventListener('click', function () {
+    render();
     flushPreviewEdits();
     TB.copyWithToast(el.editor.value, 'Markdown 源码');
   });
